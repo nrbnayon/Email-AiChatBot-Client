@@ -1,3 +1,4 @@
+// src\context\AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
 
@@ -6,6 +7,8 @@ interface User {
   name: string;
   email: string;
   authProvider: string;
+  googleId?: string;
+  microsoftId?: string;
 }
 
 interface AuthContextType {
@@ -19,61 +22,49 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// In your frontend code
-const API_BASE_URL = "https://email-ai-chat-bot-server.vercel.app/api";
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tokenSet, setTokenSet] = useState(false);
+
+  // Define base URL based on environment
+  const baseUrl =
+    import.meta.env?.MODE === "production"
+      ? import.meta.env?.VITE_LIVE_API_URL
+      : import.meta.env?.VITE_BASE_API_URL || "http://localhost:4000";
 
   // Initialize axios with credentials
   axios.defaults.withCredentials = true;
 
   // Set token in localStorage and axios headers
   const setToken = (token: string) => {
-    try {
-      localStorage.setItem("token", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      setTokenSet(true);
-      console.log("Token set successfully in localStorage and axios headers");
-    } catch (err) {
-      console.error("Error setting token:", err);
-    }
+    localStorage.setItem("token", token);
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    console.log("Token set in localStorage and axios headers");
   };
 
   // Check if user is already logged in
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-        if (token) {
-          console.log("Found token in localStorage, setting in axios headers");
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          await fetchCurrentUser();
-        } else {
-          console.log("No token found in localStorage");
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("Auth check error:", err);
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [tokenSet]);
+    if (token) {
+      console.log("Found token in localStorage, setting in axios headers");
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      fetchCurrentUser();
+    } else {
+      console.log("No token found in localStorage");
+      setLoading(false);
+    }
+  }, []);
 
   // Fetch current user data
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-      console.log("Fetching current user data from API");
-      const response = await axios.get(`${API_BASE_URL}/auth/me`);
+      console.log("Fetching current user data");
+      const response = await axios.get(`${baseUrl}/api/auth/me`);
 
       if (response.data.success) {
         console.log(
@@ -81,19 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.data.user.email
         );
         setUser(response.data.user);
-      } else {
-        console.warn("User data fetch returned unsuccessful response");
-        // Don't remove token here, just log the issue
-        setError("Failed to validate user session");
       }
-    } catch (err: any) {
-      console.error("Error fetching user:", err.message);
+    } catch (err) {
+      console.error("Error fetching user:", err);
       setError("Failed to fetch user data");
-      // Only remove token if it's an auth error (401)
-      if (err.response && err.response.status === 401) {
-        console.log("Removing token due to authentication error");
-        localStorage.removeItem("token");
-      }
+      localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
@@ -102,14 +85,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Login function
   const login = (provider: string) => {
     console.log(`Initiating ${provider} login`);
-    window.location.href = `${API_BASE_URL}/auth/${provider}`;
+    window.location.href = `${baseUrl}/api/auth/${provider}`;
   };
 
   // Logout function
   const logout = async () => {
     try {
       console.log("Logging out");
-      await axios.get(`${API_BASE_URL}/auth/logout`);
+      await axios.get(`${baseUrl}/api/auth/logout`);
       setUser(null);
       localStorage.removeItem("token");
       delete axios.defaults.headers.common["Authorization"];
