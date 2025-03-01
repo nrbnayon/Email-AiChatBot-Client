@@ -42,6 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Set token in localStorage and axios headers
   const setToken = (token: string) => {
+    console.log(`Making request to: ${baseUrl}/api/auth/me`);
+    console.log(`With headers:`, axios.defaults.headers.common);
     localStorage.setItem("token", token);
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     setTokenSet(true);
@@ -89,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (err) {
       console.error("Error fetching user:", err);
       setError("Failed to fetch user data");
-      localStorage.removeItem("token");
+      // localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
