@@ -354,7 +354,15 @@ const Dashboard: React.FC = () => {
                     </button>
 
                     {showModelDropdown && (
-                      <div className='absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm max-h-60'>
+                      <div
+                        className='absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm'
+                        style={{
+                          maxHeight: "200px",
+                          overflowY: "auto",
+                          scrollbarWidth: "thin",
+                          scrollbarColor: "#d1d5db #f3f4f6",
+                        }}
+                      >
                         {availableModels.map((model) => (
                           <div
                             key={model.id}
