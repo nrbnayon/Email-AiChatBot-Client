@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tokenSet, setTokenSet] = useState(false);
 
   // Define base URL based on environment
   const baseUrl =
@@ -43,22 +44,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const setToken = (token: string) => {
     localStorage.setItem("token", token);
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    setTokenSet(true);
+
     console.log("Token set in localStorage and axios headers");
   };
 
   // Check if user is already logged in
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-    if (token) {
-      console.log("Found token in localStorage, setting in axios headers");
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      fetchCurrentUser();
-    } else {
-      console.log("No token found in localStorage");
-      setLoading(false);
-    }
-  }, []);
+        if (token) {
+          console.log("Found token in localStorage, setting in axios headers");
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          await fetchCurrentUser();
+        } else {
+          console.log("No token found in localStorage");
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Auth check error:", err);
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [tokenSet]);
 
   // Fetch current user data
   const fetchCurrentUser = async () => {
