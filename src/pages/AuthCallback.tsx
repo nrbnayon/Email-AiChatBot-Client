@@ -1,4 +1,4 @@
-// src\pages\AuthCallback.tsx
+// Modified AuthCallback.tsx
 import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -9,14 +9,21 @@ const AuthCallback: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const handleCallback = () => {
+    const handleCallback = async () => {
       const params = new URLSearchParams(location.search);
       const token = params.get("token");
 
       if (token) {
-        console.log("Token received in callback");
+        console.log(
+          "Token received in callback:",
+          token.substring(0, 10) + "..."
+        ); // Log partial token for debugging
         setToken(token);
-        navigate("/dashboard");
+
+        // Add a small delay before navigation to ensure token is set
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 500);
       } else {
         console.error("No token received in callback");
         navigate("/login");
