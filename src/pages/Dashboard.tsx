@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { Mail, Send, LogOut, RefreshCw, Info, ChevronDown, X, Check } from "lucide-react";
+import {
+  Mail,
+  Send,
+  LogOut,
+  RefreshCw,
+  Info,
+  ChevronDown,
+  X,
+  Check,
+} from "lucide-react";
 
 interface Email {
   id: string;
@@ -35,10 +44,7 @@ const Dashboard: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>("llama3-70b-8192");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
 
-  const API_BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://your-app.vercel.app/api"
-      : "http://localhost:4000/api";
+  const API_BASE_URL = "https://email-ai-chat-bot-server.vercel.app/api";
 
   // Configure axios defaults
   useEffect(() => {
@@ -47,7 +53,7 @@ const Dashboard: React.FC = () => {
 
     // Fetch emails on component mount
     fetchEmails();
-    
+
     // Fetch available AI models
     fetchModels();
   }, []);
@@ -114,7 +120,9 @@ const Dashboard: React.FC = () => {
       setResponse("");
       setModel("");
 
-      console.log(`Sending query: "${query}" with ${emails.length} emails using model: ${selectedModel}`);
+      console.log(
+        `Sending query: "${query}" with ${emails.length} emails using model: ${selectedModel}`
+      );
 
       // Prepare email data with limited body content to reduce payload size
       const emailsForQuery = emails.map((email) => ({
@@ -134,7 +142,7 @@ const Dashboard: React.FC = () => {
         {
           query: query.trim(),
           emails: emailsForQuery,
-          model: selectedModel
+          model: selectedModel,
         },
         {
           // Add withCredentials to ensure cookies/session is sent
@@ -173,7 +181,7 @@ const Dashboard: React.FC = () => {
 
   // Get model name by ID
   const getModelName = (modelId: string): string => {
-    const model = availableModels.find(m => m.id === modelId);
+    const model = availableModels.find((m) => m.id === modelId);
     return model ? model.name : modelId;
   };
 
@@ -248,14 +256,14 @@ const Dashboard: React.FC = () => {
                       <span>{getModelName(selectedModel)}</span>
                       <ChevronDown className="h-4 w-4 text-gray-400" />
                     </button>
-                    
+
                     {showModelDropdown && (
                       <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm max-h-60">
                         {availableModels.map((model) => (
                           <div
                             key={model.id}
                             className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 ${
-                              selectedModel === model.id ? 'bg-blue-50' : ''
+                              selectedModel === model.id ? "bg-blue-50" : ""
                             }`}
                             onClick={() => {
                               setSelectedModel(model.id);
@@ -279,10 +287,13 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Query input */}
                 <div>
-                  <label htmlFor="query" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="query"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Your Question
                   </label>
                   <div className="flex">
@@ -330,7 +341,9 @@ const Dashboard: React.FC = () => {
               {loading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                  <span className="ml-2 text-sm text-gray-600">Processing your query...</span>
+                  <span className="ml-2 text-sm text-gray-600">
+                    Processing your query...
+                  </span>
                 </div>
               )}
 
@@ -349,7 +362,9 @@ const Dashboard: React.FC = () => {
 
               {response && (
                 <div className="bg-white border border-gray-200 rounded-md p-4 shadow-sm">
-                  <p className="text-gray-800 whitespace-pre-line">{response}</p>
+                  <p className="text-gray-800 whitespace-pre-line">
+                    {response}
+                  </p>
                 </div>
               )}
             </div>
@@ -364,21 +379,29 @@ const Dashboard: React.FC = () => {
               {emailsLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-                  <span className="ml-2 text-sm text-gray-600">Loading emails...</span>
+                  <span className="ml-2 text-sm text-gray-600">
+                    Loading emails...
+                  </span>
                 </div>
               ) : emails.length > 0 ? (
                 <ul className="divide-y divide-gray-200">
                   {emails.slice(0, 5).map((email) => (
-                    <li key={email.id} className="py-3 px-4 hover:bg-gray-50 transition-colors duration-150">
+                    <li
+                      key={email.id}
+                      className="py-3 px-4 hover:bg-gray-50 transition-colors duration-150"
+                    >
                       <div className="flex justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {email.subject}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            From: {email.from} • {new Date(email.date).toLocaleString()}
+                            From: {email.from} •{" "}
+                            {new Date(email.date).toLocaleString()}
                           </p>
-                          <p className="text-xs text-gray-600 mt-1 truncate">{email.snippet}</p>
+                          <p className="text-xs text-gray-600 mt-1 truncate">
+                            {email.snippet}
+                          </p>
                         </div>
                         <button
                           onClick={() => handleShowEmailDetails(email)}

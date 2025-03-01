@@ -20,9 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // In your frontend code
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-app.vercel.app/api' 
-  : 'http://localhost:4000/api';
+const API_BASE_URL = "https://email-ai-chat-bot-server.vercel.app/api";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
