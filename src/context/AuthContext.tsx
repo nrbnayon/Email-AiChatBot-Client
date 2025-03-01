@@ -31,9 +31,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Define base URL based on environment
   const baseUrl =
-    import.meta.env?.MODE === "production"
+    import.meta.env?.VITE_NODE_ENV === "production"
       ? import.meta.env?.VITE_LIVE_API_URL
-      : import.meta.env?.VITE_BASE_API_URL || "http://localhost:4000";
+      : import.meta.env?.VITE_BASE_API_URL ||
+        "https://email-ai-chat-bot-server.vercel.app";
 
   // Initialize axios with credentials
   axios.defaults.withCredentials = true;
