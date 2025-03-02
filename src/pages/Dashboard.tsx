@@ -421,7 +421,7 @@ const Dashboard: React.FC = () => {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Ask anything about your emails..."
-                      className="flex-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-md sm:text-sm border border-gray-300 p-4 shadow-sm"
+                      className="flex-1 block w-full rounded-md sm:text-sm border border-gray-300 p-4 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                       disabled={loading || emailsLoading}
                     />
                     <button
