@@ -42,13 +42,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Set token in localStorage and axios headers
   const setToken = (token: string) => {
-    console.log(`Making request to: ${baseUrl}/api/auth/me`);
-    console.log(`With headers:`, axios.defaults.headers.common);
+    if (!token) return;
+
     localStorage.setItem("token", token);
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    setTokenSet(true);
-
-    console.log("Token set in localStorage and axios headers");
+    fetchCurrentUser()
+      .then(() => {
+        setTokenSet(true);
+      })
+      .catch((err) => {
+        console.error("Error after setting token:", err);
+      });
   };
 
   // Check if user is already logged in
@@ -78,20 +82,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-      console.log("Fetching current user data");
       const response = await axios.get(`${baseUrl}/api/auth/me`);
 
       if (response.data.success) {
-        console.log(
-          "User data fetched successfully:",
-          response.data.user.email
-        );
         setUser(response.data.user);
       }
     } catch (err) {
       console.error("Error fetching user:", err);
-      setError("Failed to fetch user data");
-      // localStorage.removeItem("token");
+      if (
+        axios.isAxiosError(err) &&
+        (err.response?.status === 401 || err.response?.status === 403)
+      ) {
+        localStorage.removeItem("token");
+        delete axios.defaults.headers.common["Authorization"];
+      } else {
+        setError("Failed to fetch user data");
+      }
     } finally {
       setLoading(false);
     }
