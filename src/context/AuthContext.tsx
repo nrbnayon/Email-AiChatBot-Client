@@ -7,8 +7,8 @@ interface User {
   name: string;
   email: string;
   authProvider: string;
-  googleId?: string;
-  microsoftId?: string;
+  googleAccessToken?: string;
+  microsoftAccessToken?: string;
 }
 
 interface AuthContextType {
