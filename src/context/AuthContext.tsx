@@ -20,6 +20,27 @@ interface AuthContextType {
   setToken: (token: string) => void;
 }
 
+// Create a debug log function that writes to console and to localStorage for persistence
+const debugLog = (message: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+
+  console.log(logMessage, data);
+
+  // Store log in localStorage for persistence
+  try {
+    const logs = JSON.parse(localStorage.getItem("auth_debug_logs") || "[]");
+    logs.push({
+      time: timestamp,
+      message,
+      data: data ? JSON.stringify(data) : undefined,
+    });
+    localStorage.setItem("auth_debug_logs", JSON.stringify(logs.slice(-50))); // Keep last 50 logs
+  } catch (e) {
+    console.error("Failed to store debug log", e);
+  }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -43,39 +64,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Set token in localStorage and axios headers
   const setToken = (token: string) => {
-    if (!token) return;
+    if (!token) {
+      debugLog("setToken called with empty token, ignoring");
+      return;
+    }
 
-    console.log("Setting token in localStorage:", token);
+    debugLog("Setting token in localStorage", {
+      tokenPreview: token.substring(0, 10) + "...",
+    });
 
-    localStorage.setItem("token", token);
+    try {
+      // Save token in localStorage
+      localStorage.setItem("token", token);
 
-    // Add a timestamp to track when the token was set
-    localStorage.setItem("token_timestamp", Date.now().toString());
+      // Also save in sessionStorage as backup
+      sessionStorage.setItem("token_backup", token);
 
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    setTokenSet(true); // Set flag to trigger useEffect
+      // Add timestamp
+      localStorage.setItem("token_timestamp", Date.now().toString());
 
-    fetchCurrentUser().catch((err) =>
-      console.error("Error fetching user after setting token:", err)
-    );
+      // Set token in axios headers
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      // Set flag to trigger useEffect
+      setTokenSet((prevState) => !prevState);
+
+      debugLog("Token successfully set");
+
+      // Don't fetch user here - let the useEffect handle it
+    } catch (err) {
+      debugLog("Error setting token", err);
+    }
   };
 
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
+      debugLog("checkAuth triggered");
+
       try {
+        // Check localStorage
         const token = localStorage.getItem("token");
 
-        if (token) {
-          console.log("Found token in localStorage, setting in axios headers");
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          await fetchCurrentUser();
-        } else {
-          console.log("No token found in localStorage");
+        // If not in localStorage, try to recover from sessionStorage
+        if (!token) {
+          const backupToken = sessionStorage.getItem("token_backup");
+          if (backupToken) {
+            debugLog("Recovering token from sessionStorage");
+            localStorage.setItem("token", backupToken);
+            axios.defaults.headers.common[
+              "Authorization"
+            ] = `Bearer ${backupToken}`;
+            await fetchCurrentUser();
+            return;
+          }
+
+          debugLog("No token found in any storage");
           setLoading(false);
+          return;
         }
+
+        debugLog("Found token in localStorage", {
+          tokenPreview: token.substring(0, 10) + "...",
+        });
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        await fetchCurrentUser();
       } catch (err) {
-        console.error("Auth check error:", err);
+        debugLog("Auth check error", err);
         setLoading(false);
       }
     };
@@ -85,48 +140,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Fetch current user data
   const fetchCurrentUser = async () => {
+    debugLog("fetchCurrentUser called");
+
     try {
       setLoading(true);
 
       const token = localStorage.getItem("token");
       if (!token) {
-        console.log("No token found, skipping user fetch");
+        debugLog("No token found, skipping user fetch");
         setLoading(false);
         return;
       }
 
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      console.log("Fetching user with token:", token);
-
-      const response = await axios.get(`${baseUrl}/api/auth/me`, {
-        withCredentials: true, // Ensures cookies are sent
+      debugLog("Fetching user with token", {
+        tokenPreview: token.substring(0, 10) + "...",
       });
 
-      if (response.data.success) {
-        setUser(response.data.user);
-        console.log("User fetched successfully:", response.data.user.email);
-      } else {
-        console.warn("API returned success:false");
-        setError("Failed to get user data");
-        // Do NOT remove token here - might be temporary issue
+      // IMPORTANT: Make a direct fetch request instead of using axios
+      // to rule out axios configuration issues
+      const fetchOptions = {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include" as RequestCredentials,
+      };
+
+      debugLog(`Making fetch request to ${baseUrl}/api/auth/me`, fetchOptions);
+
+      try {
+        const response = await fetch(`${baseUrl}/api/auth/me`, fetchOptions);
+
+        debugLog("Fetch response status", response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          debugLog("User data received", data);
+
+          if (data.success) {
+            setUser(data.user);
+            debugLog("User set successfully", data.user);
+          } else {
+            debugLog("API returned success:false", data);
+            setError("Failed to get user data");
+          }
+        } else {
+          // Don't remove token for server errors
+          debugLog("Server returned error status", response.status);
+
+          if (response.status === 401 || response.status === 403) {
+            debugLog("Auth error - KEEPING TOKEN FOR DEBUGGING");
+            // DON'T remove token for now to debug the issue
+            // localStorage.removeItem("token");
+          }
+        }
+      } catch (fetchErr) {
+        debugLog("Fetch request failed", fetchErr);
+
+        // Try axios as fallback
+        debugLog("Trying axios as fallback");
+        const axiosResponse = await axios.get(`${baseUrl}/api/auth/me`, {
+          withCredentials: true,
+        });
+
+        debugLog("Axios response received", axiosResponse.data);
+
+        if (axiosResponse.data.success) {
+          setUser(axiosResponse.data.user);
+        }
       }
     } catch (err: any) {
-      console.error("Error fetching user:", err);
+      debugLog("Error in fetchCurrentUser", err);
 
-      // Only remove token for auth-related errors (401, 403)
-      if (
-        err.response &&
-        (err.response.status === 401 || err.response.status === 403)
-      ) {
-        console.log("Removing token due to auth error:", err.response.status);
-        localStorage.removeItem("token");
-      } else {
-        // For other errors (network, server, etc.), keep the token
-        console.log(
-          "Keeping token despite error. Likely CORS or network issue."
-        );
-      }
+      // CRITICAL: DO NOT REMOVE TOKEN HERE
+      // This is likely where the issue is happening
+      debugLog("KEEPING TOKEN despite error for debugging");
 
       setError(err.message || "Failed to fetch user data");
     } finally {
@@ -136,28 +225,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Login function
   const login = (provider: string) => {
-    console.log(`Initiating ${provider} login`);
+    debugLog(`Initiating ${provider} login`);
     window.location.href = `${baseUrl}/api/auth/${provider}`;
   };
 
   // Logout function
   const logout = async () => {
+    debugLog("Logout called");
+
     try {
-      console.log("Logging out");
       await axios.get(`${baseUrl}/api/auth/logout`);
       setUser(null);
+
+      debugLog("Removing token on explicit logout");
       localStorage.removeItem("token");
+      sessionStorage.removeItem("token_backup");
       localStorage.removeItem("token_timestamp");
+
       delete axios.defaults.headers.common["Authorization"];
-      console.log("Logout successful");
+      debugLog("Logout successful");
     } catch (err) {
-      console.error("Error logging out:", err);
+      debugLog("Error logging out", err);
       setError("Failed to logout");
 
       // Force logout on frontend even if API call fails
       setUser(null);
       localStorage.removeItem("token");
-      localStorage.removeItem("token_timestamp");
+      sessionStorage.removeItem("token_backup");
       delete axios.defaults.headers.common["Authorization"];
     }
   };

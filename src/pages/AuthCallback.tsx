@@ -3,63 +3,115 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Sparkles } from "lucide-react";
 
-const AuthCallback: React.FC = () => {
+// Shared debug log function
+const debugLog = (message, data) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+
+  console.log(logMessage, data);
+
+  // Store log in localStorage for persistence
+  try {
+    const logs = JSON.parse(localStorage.getItem("auth_debug_logs") || "[]");
+    logs.push({
+      time: timestamp,
+      message,
+      data: data ? JSON.stringify(data) : undefined,
+    });
+    localStorage.setItem("auth_debug_logs", JSON.stringify(logs.slice(-50))); // Keep last 50 logs
+  } catch (e) {
+    console.error("Failed to store debug log", e);
+  }
+};
+
+const AuthCallback = () => {
   const { setToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [status, setStatus] = useState("processing");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleCallback = () => {
+    const handleCallback = async () => {
+      debugLog("Auth callback triggered", { url: location.search });
+
       try {
         const params = new URLSearchParams(location.search);
         const token = params.get("token");
 
-        if (token) {
-          console.log("Token received in callback");
+        if (!token) {
+          debugLog("No token found in URL params", null);
+          setStatus("error");
+          setError("No authentication token received");
+          setTimeout(() => navigate("/login"), 2000);
+          return;
+        }
 
-          // Store token temporarily in sessionStorage as backup
-          sessionStorage.setItem("temp_token", token);
+        debugLog("Token received in callback", {
+          tokenPreview: token.substring(0, 10) + "...",
+        });
 
-          // Use a small timeout to ensure setToken completes
+        // Store token in multiple places for redundancy
+        try {
+          localStorage.setItem("token", token);
+          sessionStorage.setItem("token_backup", token);
+          localStorage.setItem("token_timestamp", Date.now().toString());
+          debugLog("Token stored in storage directly");
+        } catch (storageErr) {
+          debugLog("Error storing token directly", storageErr);
+        }
+
+        // Use a timeout to ensure browser has time to persist the token
+        setTimeout(() => {
+          debugLog("Checking if token was stored", null);
+          const storedToken = localStorage.getItem("token");
+
+          if (storedToken) {
+            debugLog("Token confirmed in localStorage");
+          } else {
+            debugLog("Token not found in localStorage after direct set!");
+            // Try again
+            localStorage.setItem("token", token);
+          }
+
+          // Call the context's setToken function
+          debugLog("Calling context setToken function");
+          setToken(token);
+
+          // Verify again after context function
           setTimeout(() => {
-            setToken(token);
+            const finalCheck = localStorage.getItem("token");
 
-            // Verify the token was set
-            const storedToken = localStorage.getItem("token");
-            if (storedToken) {
-              console.log("Token successfully stored, navigating to dashboard");
+            if (finalCheck) {
+              debugLog("Final token check successful, navigating to dashboard");
+              setStatus("success");
               navigate("/dashboard");
             } else {
-              console.error("Token failed to store in localStorage");
-              // Try to recover from sessionStorage
-              const tempToken = sessionStorage.getItem("temp_token");
-              if (tempToken) {
-                console.log("Attempting recovery from sessionStorage");
-                localStorage.setItem("token", tempToken);
-                navigate("/dashboard");
-              } else {
-                setError("Authentication failed: Could not store token");
-                navigate("/login");
-              }
+              debugLog(
+                "Final token check failed! Using manual navigation with token"
+              );
+              setStatus("error");
+              setError("Failed to store authentication token");
+
+              // Try one more direct approach
+              window.location.href = `/dashboard?emergencyToken=${encodeURIComponent(
+                token
+              )}`;
             }
           }, 500);
-        } else {
-          console.error("No token received in callback");
-          setError("Authentication failed: No token received");
-          navigate("/login");
-        }
+        }, 500);
       } catch (err) {
-        console.error("Error in auth callback:", err);
+        debugLog("Error in auth callback", err);
+        setStatus("error");
         setError("Authentication process failed");
-        navigate("/login");
+        setTimeout(() => navigate("/login"), 2000);
       }
     };
 
     handleCallback();
   }, [location, navigate, setToken]);
 
-  if (error) {
+  if (status === "error") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
         <div className="text-center bg-white p-8 rounded-lg shadow-lg">
@@ -82,7 +134,9 @@ const AuthCallback: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-800">
             Authentication Error
           </h2>
-          <p className="mt-2 text-sm text-gray-500">{error}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {error || "Unknown error occurred"}
+          </p>
           <button
             onClick={() => navigate("/login")}
             className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
@@ -102,10 +156,14 @@ const AuthCallback: React.FC = () => {
           <Sparkles className="h-6 w-6 text-indigo-500 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
         </div>
         <h2 className="text-xl font-semibold text-gray-800">
-          Completing authentication...
+          {status === "success"
+            ? "Authentication successful!"
+            : "Completing authentication..."}
         </h2>
         <p className="mt-2 text-sm text-gray-500">
-          You will be redirected shortly
+          {status === "success"
+            ? "Redirecting to your dashboard"
+            : "Please wait while we complete the process"}
         </p>
       </div>
     </div>
