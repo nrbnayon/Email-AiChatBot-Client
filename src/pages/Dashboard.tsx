@@ -61,10 +61,37 @@ const Dashboard: React.FC = () => {
 
   // Configure axios defaults
   useEffect(() => {
+    // Ensure token is being sent with requests
+    const token = localStorage.getItem("authToken");
+    console.log(
+      "Current token in localStorage:",
+      token ? "Present" : "Missing"
+    );
+
+    if (token) {
+      // Make sure axios is configured to send the token
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
+
     axios.defaults.withCredentials = true;
     fetchEmails();
     fetchModels();
   }, []);
+
+  const testAuth = async () => {
+    try {
+      // Add Authorization header explicitly for this request as a test
+      const token = localStorage.getItem("authToken");
+      const response = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("Auth test response:", response.data);
+    } catch (error) {
+      console.error("Auth test failed:", error);
+    }
+  };
 
   console.log("Get login user:", user);
 

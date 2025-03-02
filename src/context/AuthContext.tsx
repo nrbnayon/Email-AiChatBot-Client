@@ -47,13 +47,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     localStorage.setItem("token", token);
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    fetchCurrentUser()
-      .then(() => {
-        setTokenSet(true);
-      })
-      .catch((err) => {
-        console.error("Error after setting token:", err);
-      });
+    if (token) {
+      fetchCurrentUser()
+        .then(() => {
+          setTokenSet(true);
+        })
+        .catch((err) => {
+          console.error("Error after setting token:", err);
+        });
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
   };
 
   // Fetch current user data
