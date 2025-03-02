@@ -28,12 +28,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tokenSet, setTokenSet] = useState(false);
 
   // Define base URL based on environment
   const baseUrl =
     import.meta.env?.VITE_NODE_ENV === "production"
-      ? import.meta.env?.VITE_LIVE_API_URL
+      ? import.meta.env?.VITE_LIVE_API_URL ||
+        "https://email-ai-chat-bot-server.vercel.app"
       : import.meta.env?.VITE_BASE_API_URL ||
         "https://email-ai-chat-bot-server.vercel.app";
 
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     console.log("Setting token in localStorage:", token);
 
     localStorage.setItem("token", token);
-    sessionStorage.setItem("token", token); // ✅ Fallback
+    // No need for sessionStorage duplicate
 
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
@@ -77,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuth();
-  }, [tokenSet]);
+  }, []);
 
   // Fetch current user data
   const fetchCurrentUser = async () => {
