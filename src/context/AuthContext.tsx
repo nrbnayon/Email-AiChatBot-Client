@@ -56,29 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
   };
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem("token");
-
-        if (token) {
-          console.log("Found token in localStorage, setting in axios headers");
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          await fetchCurrentUser();
-        } else {
-          console.log("No token found in localStorage");
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("Auth check error:", err);
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [tokenSet]);
-
   // Fetch current user data
   const fetchCurrentUser = async () => {
     try {
@@ -96,7 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         axios.isAxiosError(err) &&
         (err.response?.status === 401 || err.response?.status === 403)
       ) {
-        // localStorage.removeItem("token");
+        // Don't remove token here - this might be causing the issue
+        // Just clear the header, let the app decide when to remove the token
         delete axios.defaults.headers.common["Authorization"];
       } else {
         setError("Failed to fetch user data");
@@ -105,6 +83,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        if (token) {
+          console.log("Found token in localStorage, setting in axios headers");
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          try {
+            await fetchCurrentUser();
+          } catch (fetchErr) {
+            console.error("Error fetching user during auth check:", fetchErr);
+            // Don't remove token on error, just log it
+          }
+        } else {
+          console.log("No token found in localStorage");
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Auth check error:", err);
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [tokenSet]);
 
   // Login function
   const login = (provider: string) => {
@@ -124,6 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (err) {
       console.error("Error logging out:", err);
       setError("Failed to logout");
+      // Still remove token even if the logout API call fails
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
     }
   };
 
