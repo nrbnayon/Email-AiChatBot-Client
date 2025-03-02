@@ -103,7 +103,10 @@ const Dashboard: React.FC = () => {
       }
 
       let response;
-      const currentProvider = provider || activeProvider || user?.authProvider;
+      const currentProvider =
+        provider || activeProvider || user?.authProvider || "google";
+
+      setActiveProvider(currentProvider);
 
       if (currentProvider === "google") {
         response = await axios.get(`${API_URL}/api/emails/gmail`, {
