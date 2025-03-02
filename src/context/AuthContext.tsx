@@ -66,7 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(true);
       const response = await axios.get(`${baseUrl}/api/auth/me`);
 
-      console.log("Fetch CurrentUser response::", response);
 
       if (response.data.success) {
         setUser(response.data.user);
@@ -95,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const token = localStorage.getItem("token");
 
         if (token) {
-          console.log("Found token in localStorage, setting in axios headers");
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           try {
             await fetchCurrentUser();
@@ -104,7 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             // Don't remove token on error, just log it
           }
         } else {
-          console.log("No token found in localStorage");
           setLoading(false);
         }
       } catch (err) {
@@ -118,19 +115,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Login function
   const login = (provider: string) => {
-    console.log(`Initiating ${provider} login`);
     window.location.href = `${baseUrl}/api/auth/${provider}`;
   };
 
   // Logout function
   const logout = async () => {
     try {
-      console.log("Logging out");
       await axios.get(`${baseUrl}/api/auth/logout`);
       setUser(null);
       localStorage.removeItem("token");
       delete axios.defaults.headers.common["Authorization"];
-      console.log("Logout successful");
     } catch (err) {
       console.error("Error logging out:", err);
       setError("Failed to logout");

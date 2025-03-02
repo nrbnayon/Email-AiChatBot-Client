@@ -61,39 +61,14 @@ const Dashboard: React.FC = () => {
 
   // Configure axios defaults
   useEffect(() => {
-    // Ensure token is being sent with requests
     const token = localStorage.getItem("authToken");
-    console.log(
-      "Current token in localStorage:",
-      token ? "Present" : "Missing"
-    );
-
     if (token) {
-      // Make sure axios is configured to send the token
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
-
     axios.defaults.withCredentials = true;
     fetchEmails();
     fetchModels();
   }, []);
-
-  const testAuth = async () => {
-    try {
-      // Add Authorization header explicitly for this request as a test
-      const token = localStorage.getItem("authToken");
-      const response = await axios.get(`${API_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log("Auth test response:", response.data);
-    } catch (error) {
-      console.error("Auth test failed:", error);
-    }
-  };
-
-  console.log("Get login user:", user);
 
   // Fetch available AI models
   const fetchModels = async () => {
@@ -111,9 +86,6 @@ const Dashboard: React.FC = () => {
     try {
       setEmailsLoading(true);
       setError(null);
-      console.log("Starting email fetch...");
-
-      console.log("Provider in Dashboard:::", provider);
 
       if (provider) {
         setActiveProvider(provider);
@@ -149,7 +121,6 @@ const Dashboard: React.FC = () => {
 
       if (response.data.success) {
         setEmails(response.data.emails || []);
-        console.log(`Loaded ${response.data.emails?.length || 0} emails`);
       } else {
         throw new Error(response.data.message || "Failed to fetch emails");
       }
@@ -204,7 +175,6 @@ const Dashboard: React.FC = () => {
       if (response.data.success) {
         setResponse(response.data.response);
         setModel(response.data.model || selectedModel);
-        console.log("Query processed successfully");
       } else {
         throw new Error(response.data.message || "Unknown error occurred");
       }
@@ -214,7 +184,6 @@ const Dashboard: React.FC = () => {
       const errorMessage =
         err.response?.data?.message || err.response?.data?.error || err.message;
       setError(`Failed to process your query: ${errorMessage}`);
-      console.log("Error details:", err.response?.data || err);
     } finally {
       setLoading(false);
     }

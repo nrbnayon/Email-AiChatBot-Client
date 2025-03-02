@@ -14,7 +14,6 @@ const AuthCallback: React.FC = () => {
       const token = params.get("token");
 
       if (token) {
-        console.log("Token received in callback");
         setToken(token);
         navigate("/dashboard");
       } else {
