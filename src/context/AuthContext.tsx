@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!token) return;
 
     localStorage.setItem("token", token);
+    sessionStorage.setItem("token", token);
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     fetchCurrentUser()
       .then(() => {
@@ -82,22 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${baseUrl}/api/auth/me`);
+      const response = await axios.get(`${baseUrl}/api/auth/me`, {
+        withCredentials: true, // ✅ Make sure cookies are sent
+      });
 
       if (response.data.success) {
         setUser(response.data.user);
       }
     } catch (err) {
       console.error("Error fetching user:", err);
-      if (
-        axios.isAxiosError(err) &&
-        (err.response?.status === 401 || err.response?.status === 403)
-      ) {
-        localStorage.removeItem("token");
-        delete axios.defaults.headers.common["Authorization"];
-      } else {
-        setError("Failed to fetch user data");
-      }
+      localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
