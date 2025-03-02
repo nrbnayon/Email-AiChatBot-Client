@@ -44,16 +44,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const setToken = (token: string) => {
     if (!token) return;
 
+    console.log("Setting token in localStorage:", token);
+
     localStorage.setItem("token", token);
-    sessionStorage.setItem("token", token);
+    sessionStorage.setItem("token", token); // ✅ Fallback
+
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    fetchCurrentUser()
-      .then(() => {
-        setTokenSet(true);
-      })
-      .catch((err) => {
-        console.error("Error after setting token:", err);
-      });
+
+    fetchCurrentUser().catch((err) =>
+      console.error("Error fetching user after setting token:", err)
+    );
   };
 
   // Check if user is already logged in
@@ -83,8 +83,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("No token found, skipping user fetch");
+        setLoading(false);
+        return;
+      }
+
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      console.log("Fetching user with token:", token);
+
       const response = await axios.get(`${baseUrl}/api/auth/me`, {
-        withCredentials: true, // ✅ Make sure cookies are sent
+        withCredentials: true, // ✅ Ensures cookies are sent
       });
 
       if (response.data.success) {
@@ -92,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (err) {
       console.error("Error fetching user:", err);
-      localStorage.removeItem("token");
+      localStorage.removeItem("token"); // Prevent infinite loop
     } finally {
       setLoading(false);
     }
