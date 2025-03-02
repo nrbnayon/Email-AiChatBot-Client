@@ -66,6 +66,8 @@ const Dashboard: React.FC = () => {
     fetchModels();
   }, []);
 
+  console.log("Get login user:", user);
+
   // Fetch available AI models
   const fetchModels = async () => {
     try {
@@ -84,7 +86,8 @@ const Dashboard: React.FC = () => {
       setError(null);
       console.log("Starting email fetch...");
 
-      console.log("Provider:", provider);
+      console.log("Provider in Dashboard:::", provider);
+
       if (provider) {
         setActiveProvider(provider);
       } else if (!activeProvider) {
