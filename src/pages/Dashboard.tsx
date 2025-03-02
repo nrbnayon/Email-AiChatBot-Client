@@ -1,6 +1,4 @@
-// src/pages/Dashboard.tsx
-import type React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -54,14 +52,18 @@ const Dashboard: React.FC = () => {
   // Define API URL based on environment
   const API_URL =
     import.meta.env.VITE_NODE_ENV === "production"
-      ? import.meta.env.VITE_LIVE_API_URL
+      ? import.meta.env.VITE_LIVE_API_URL ||
+        "https://email-ai-chat-bot-server.vercel.app"
       : import.meta.env.VITE_BASE_API_URL ||
         "https://email-ai-chat-bot-server.vercel.app";
 
   // Configure axios defaults
   useEffect(() => {
-    // Set up axios
-    axios.defaults.withCredentials = true;
+    // Set up axios with token from localStorage
+    const token = localStorage.getItem("token");
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
 
     // Fetch emails on component mount
     fetchEmails();
@@ -73,10 +75,15 @@ const Dashboard: React.FC = () => {
   // Fetch available AI models
   const fetchModels = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/ai/models`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_URL}/api/ai/models`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       if (response.data.success) {
         setAvailableModels(response.data.models);
-        // setSelectedModel("llama3-70b-8192");
       }
     } catch (error) {
       console.error("Error fetching AI models:", error);
@@ -88,6 +95,12 @@ const Dashboard: React.FC = () => {
       setEmailsLoading(true);
       setError(null);
       console.log("Starting email fetch...");
+
+      // Get token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
 
       console.log("Provider:", provider);
       if (provider) {
@@ -110,11 +123,15 @@ const Dashboard: React.FC = () => {
 
       if (currentProvider === "google") {
         response = await axios.get(`${API_URL}/api/emails/gmail`, {
-          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
       } else if (currentProvider === "microsoft") {
         response = await axios.get(`${API_URL}/api/emails/outlook`, {
-          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
       } else {
         throw new Error("Unknown auth provider");
@@ -150,9 +167,11 @@ const Dashboard: React.FC = () => {
       setResponse("");
       setModel("");
 
-      // console.log(
-      //   `Sending query: "${query}" with ${emails.length} emails using model: ${selectedModel}`
-      // );
+      // Get token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
 
       // Prepare email data with limited body content to reduce payload size
       const emailsForQuery = emails.map((email) => ({
@@ -175,9 +194,8 @@ const Dashboard: React.FC = () => {
           model: selectedModel,
         },
         {
-          // Add withCredentials to ensure cookies/session is sent
-          withCredentials: true,
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           timeout: 60000, // 60 second timeout

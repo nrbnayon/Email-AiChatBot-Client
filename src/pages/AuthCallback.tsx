@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Sparkles } from "lucide-react";
 
 // Shared debug log function
-const debugLog = (message, data) => {
+const debugLog = (message: string, data?: any) => {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}`;
 
@@ -51,55 +51,19 @@ const AuthCallback = () => {
           tokenPreview: token.substring(0, 10) + "...",
         });
 
-        // Store token in multiple places for redundancy
-        try {
-          localStorage.setItem("token", token);
-          sessionStorage.setItem("token_backup", token);
-          localStorage.setItem("token_timestamp", Date.now().toString());
-          debugLog("Token stored in storage directly");
-        } catch (storageErr) {
-          debugLog("Error storing token directly", storageErr);
-        }
+        // Store token in localStorage
+        localStorage.setItem("token", token);
+        sessionStorage.setItem("token_backup", token);
+        localStorage.setItem("token_timestamp", Date.now().toString());
 
-        // Use a timeout to ensure browser has time to persist the token
+        // Call the context's setToken function
+        setToken(token);
+
+        // Navigate to dashboard after a short delay
         setTimeout(() => {
-          debugLog("Checking if token was stored", null);
-          const storedToken = localStorage.getItem("token");
-
-          if (storedToken) {
-            debugLog("Token confirmed in localStorage");
-          } else {
-            debugLog("Token not found in localStorage after direct set!");
-            // Try again
-            localStorage.setItem("token", token);
-          }
-
-          // Call the context's setToken function
-          debugLog("Calling context setToken function");
-          setToken(token);
-
-          // Verify again after context function
-          setTimeout(() => {
-            const finalCheck = localStorage.getItem("token");
-
-            if (finalCheck) {
-              debugLog("Final token check successful, navigating to dashboard");
-              setStatus("success");
-              navigate("/dashboard");
-            } else {
-              debugLog(
-                "Final token check failed! Using manual navigation with token"
-              );
-              setStatus("error");
-              setError("Failed to store authentication token");
-
-              // Try one more direct approach
-              window.location.href = `/dashboard?emergencyToken=${encodeURIComponent(
-                token
-              )}`;
-            }
-          }, 500);
-        }, 500);
+          setStatus("success");
+          navigate("/dashboard");
+        }, 1000);
       } catch (err) {
         debugLog("Error in auth callback", err);
         setStatus("error");

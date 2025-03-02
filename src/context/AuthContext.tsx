@@ -1,4 +1,3 @@
-// src\context\AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
 
@@ -59,9 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       : import.meta.env?.VITE_BASE_API_URL ||
         "https://email-ai-chat-bot-server.vercel.app";
 
-  // Initialize axios with credentials
-  axios.defaults.withCredentials = true;
-
   // Set token in localStorage and axios headers
   const setToken = (token: string) => {
     if (!token) {
@@ -90,8 +86,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setTokenSet((prevState) => !prevState);
 
       debugLog("Token successfully set");
-
-      // Don't fetch user here - let the useEffect handle it
     } catch (err) {
       debugLog("Error setting token", err);
     }
@@ -156,67 +150,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         tokenPreview: token.substring(0, 10) + "...",
       });
 
-      // IMPORTANT: Make a direct fetch request instead of using axios
-      // to rule out axios configuration issues
-      const fetchOptions = {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include" as RequestCredentials,
-      };
-
-      debugLog(`Making fetch request to ${baseUrl}/api/auth/me`, fetchOptions);
-
+      // Use axios directly with explicit headers
       try {
-        const response = await fetch(`${baseUrl}/api/auth/me`, fetchOptions);
-
-        debugLog("Fetch response status", response.status);
-
-        if (response.ok) {
-          const data = await response.json();
-          debugLog("User data received", data);
-
-          if (data.success) {
-            setUser(data.user);
-            debugLog("User set successfully", data.user);
-          } else {
-            debugLog("API returned success:false", data);
-            setError("Failed to get user data");
-          }
-        } else {
-          // Don't remove token for server errors
-          debugLog("Server returned error status", response.status);
-
-          if (response.status === 401 || response.status === 403) {
-            debugLog("Auth error - KEEPING TOKEN FOR DEBUGGING");
-            // DON'T remove token for now to debug the issue
-            // localStorage.removeItem("token");
-          }
-        }
-      } catch (fetchErr) {
-        debugLog("Fetch request failed", fetchErr);
-
-        // Try axios as fallback
-        debugLog("Trying axios as fallback");
-        const axiosResponse = await axios.get(`${baseUrl}/api/auth/me`, {
-          withCredentials: true,
+        const response = await axios.get(`${baseUrl}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         });
 
-        debugLog("Axios response received", axiosResponse.data);
+        debugLog("Axios response received", response.data);
 
-        if (axiosResponse.data.success) {
-          setUser(axiosResponse.data.user);
+        if (response.data.success) {
+          setUser(response.data.user);
+          debugLog("User set successfully", response.data.user);
+        } else {
+          debugLog("API returned success:false", response.data);
+          setError("Failed to get user data");
+        }
+      } catch (axiosErr: any) {
+        debugLog("Axios request failed", axiosErr.response?.status);
+
+        if (axiosErr.response?.status === 401) {
+          debugLog("Authentication failed - token may be invalid");
+          // Don't remove token yet to allow for debugging
         }
       }
     } catch (err: any) {
       debugLog("Error in fetchCurrentUser", err);
-
-      // CRITICAL: DO NOT REMOVE TOKEN HERE
-      // This is likely where the issue is happening
-      debugLog("KEEPING TOKEN despite error for debugging");
-
       setError(err.message || "Failed to fetch user data");
     } finally {
       setLoading(false);
