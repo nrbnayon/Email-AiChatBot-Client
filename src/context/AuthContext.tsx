@@ -85,6 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(true);
       const response = await axios.get(`${baseUrl}/api/auth/me`);
 
+      console.log("Fetch CurrentUser response::", response);
+
       if (response.data.success) {
         setUser(response.data.user);
       }
