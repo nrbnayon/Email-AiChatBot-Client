@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tokenSet, setTokenSet] = useState(false);
 
   // Define base URL based on environment
   const baseUrl =
@@ -47,9 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     console.log("Setting token in localStorage:", token);
 
     localStorage.setItem("token", token);
-    // No need for sessionStorage duplicate
+
+    // Add a timestamp to track when the token was set
+    localStorage.setItem("token_timestamp", Date.now().toString());
 
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    setTokenSet(true); // Set flag to trigger useEffect
 
     fetchCurrentUser().catch((err) =>
       console.error("Error fetching user after setting token:", err)
@@ -77,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuth();
-  }, []);
+  }, [tokenSet]);
 
   // Fetch current user data
   const fetchCurrentUser = async () => {
@@ -96,15 +100,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("Fetching user with token:", token);
 
       const response = await axios.get(`${baseUrl}/api/auth/me`, {
-        withCredentials: true, // ✅ Ensures cookies are sent
+        withCredentials: true, // Ensures cookies are sent
       });
 
       if (response.data.success) {
         setUser(response.data.user);
+        console.log("User fetched successfully:", response.data.user.email);
+      } else {
+        console.warn("API returned success:false");
+        setError("Failed to get user data");
+        // Do NOT remove token here - might be temporary issue
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching user:", err);
-      localStorage.removeItem("token"); // Prevent infinite loop
+
+      // Only remove token for auth-related errors (401, 403)
+      if (
+        err.response &&
+        (err.response.status === 401 || err.response.status === 403)
+      ) {
+        console.log("Removing token due to auth error:", err.response.status);
+        localStorage.removeItem("token");
+      } else {
+        // For other errors (network, server, etc.), keep the token
+        console.log(
+          "Keeping token despite error. Likely CORS or network issue."
+        );
+      }
+
+      setError(err.message || "Failed to fetch user data");
     } finally {
       setLoading(false);
     }
@@ -123,11 +147,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await axios.get(`${baseUrl}/api/auth/logout`);
       setUser(null);
       localStorage.removeItem("token");
+      localStorage.removeItem("token_timestamp");
       delete axios.defaults.headers.common["Authorization"];
       console.log("Logout successful");
     } catch (err) {
       console.error("Error logging out:", err);
       setError("Failed to logout");
+
+      // Force logout on frontend even if API call fails
+      setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("token_timestamp");
+      delete axios.defaults.headers.common["Authorization"];
     }
   };
 
