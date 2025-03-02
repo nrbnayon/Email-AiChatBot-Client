@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         axios.isAxiosError(err) &&
         (err.response?.status === 401 || err.response?.status === 403)
       ) {
-        localStorage.removeItem("token");
+        // localStorage.removeItem("token");
         delete axios.defaults.headers.common["Authorization"];
       } else {
         setError("Failed to fetch user data");
