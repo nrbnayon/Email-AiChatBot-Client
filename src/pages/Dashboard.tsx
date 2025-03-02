@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+// src/pages/Dashboard.tsx
+import type React from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -59,29 +61,15 @@ const Dashboard: React.FC = () => {
 
   // Configure axios defaults
   useEffect(() => {
-    // Set up axios with token from localStorage
-    const token = localStorage.getItem("token");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    }
-
-    // Fetch emails on component mount
+    axios.defaults.withCredentials = true;
     fetchEmails();
-
-    // Fetch available AI models
     fetchModels();
   }, []);
 
   // Fetch available AI models
   const fetchModels = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/api/ai/models`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.get(`${API_URL}/api/ai/models`);
       if (response.data.success) {
         setAvailableModels(response.data.models);
       }
@@ -96,12 +84,6 @@ const Dashboard: React.FC = () => {
       setError(null);
       console.log("Starting email fetch...");
 
-      // Get token from localStorage
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-
       console.log("Provider:", provider);
       if (provider) {
         setActiveProvider(provider);
@@ -113,7 +95,6 @@ const Dashboard: React.FC = () => {
         } else if (user?.microsoftAccessToken) {
           setActiveProvider("microsoft");
         } else {
-          // Fallback
           setActiveProvider("google");
         }
       }
@@ -123,15 +104,11 @@ const Dashboard: React.FC = () => {
 
       if (currentProvider === "google") {
         response = await axios.get(`${API_URL}/api/emails/gmail`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          withCredentials: true,
         });
       } else if (currentProvider === "microsoft") {
         response = await axios.get(`${API_URL}/api/emails/outlook`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          withCredentials: true,
         });
       } else {
         throw new Error("Unknown auth provider");
@@ -158,7 +135,6 @@ const Dashboard: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!query.trim()) return;
 
     try {
@@ -166,14 +142,6 @@ const Dashboard: React.FC = () => {
       setError(null);
       setResponse("");
       setModel("");
-
-      // Get token from localStorage
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-
-      // Prepare email data with limited body content to reduce payload size
       const emailsForQuery = emails.map((email) => ({
         id: email.id,
         date: email.date,
@@ -181,11 +149,9 @@ const Dashboard: React.FC = () => {
         to: email.to,
         subject: email.subject,
         snippet: email.snippet,
-        // Limit body size to prevent payload issues
         body: email.body?.substring(0, 1000) || "",
       }));
 
-      // Use axios with better error handling
       const response = await axios.post(
         `${API_URL}/api/ai/query`,
         {
@@ -194,11 +160,11 @@ const Dashboard: React.FC = () => {
           model: selectedModel,
         },
         {
+          withCredentials: true,
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          timeout: 60000, // 60 second timeout
+          timeout: 60000,
         }
       );
 
@@ -233,11 +199,9 @@ const Dashboard: React.FC = () => {
     return model ? model.name : modelId;
   };
 
-  // Check if user has Google authentication
   const hasGoogleAuth =
     !!user?.googleAccessToken || user?.authProvider === "google";
 
-  // Check if user has Microsoft authentication
   const hasMicrosoftAuth =
     !!user?.microsoftAccessToken || user?.authProvider === "microsoft";
 
@@ -283,7 +247,6 @@ const Dashboard: React.FC = () => {
 
             {/* Email provider toggle buttons */}
             <div className="flex space-x-2">
-              {/* Show Gmail button if user has Google access token */}
               {(user?.googleAccessToken || hasGoogleAuth) && (
                 <button
                   onClick={() => fetchEmails("google")}
@@ -634,7 +597,6 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Click outside to close modals */}
       {(showModelDropdown || showEmailDetails) && (
         <div
           className="fixed inset-0 z-40"
@@ -642,7 +604,6 @@ const Dashboard: React.FC = () => {
             e.stopPropagation();
             setShowModelDropdown(false);
             if (showEmailDetails) {
-              // Don't close email details when clicking inside the modal
               if (!(e.target as Element).closest(".bg-white")) {
                 setShowEmailDetails(false);
               }
